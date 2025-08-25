@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Интервью для автоматизации ролей — Конструктор отчёта</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root { --card: #0f172a; --ink: #e5e7eb; --muted:#9ca3af; --accent:#22d3ee; }
+    html, body { background:#0b1020; color:var(--ink); }
+    .card { background:var(--card); border-radius:1rem; box-shadow:0 10px 30px rgba(0,0,0,.35); }
+    .chip { padding:.1rem .5rem; border:1px solid rgba(255,255,255,.1); border-radius:.5rem; font-size:.75rem; }
+    .btn { background:#111827; border:1px solid rgba(255,255,255,.12); border-radius:.75rem; padding:.55rem .9rem; }
+    .btn:hover { border-color:rgba(255,255,255,.25); }
+    .btn-primary { background:linear-gradient(135deg,#22d3ee,#4ade80); color:#0b1020; font-weight:700 }
+    .grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap:1rem; }
+    @media (max-width: 900px){ .grid-2{ grid-template-columns: 1fr; } }
+    textarea { min-height: 110px; }
+    .kbd{border:1px solid rgba(255,255,255,.2); border-bottom-width:2px; border-radius:.5rem; padding:.05rem .4rem; font-weight:700; font-size:.75rem}
+    .id-tag{font-size:.7rem; color:var(--muted)}
+    .section-title{display:flex;align-items:center;gap:.6rem}
+  </style>
+</head>
+<body>
+  <div class="max-w-6xl mx-auto p-4 md:p-6">
+    <header class="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-6">
+      <div>
+        <h1 class="text-2xl md:text-3xl font-bold">Интервью для автоматизации ролей</h1>
+        <p class="text-sm text-gray-300">Структурированная форма для офисных интервью. Экспорт в JSON / Markdown / YAML. Локальное сохранение.</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button class="btn" onclick="saveDraft()" title="Сохранить черновик в браузере"><span>💾</span> Сохранить</button>
+        <button class="btn" onclick="loadDraft()" title="Загрузить черновик"><span>📂</span> Загрузить</button>
+        <label class="btn cursor-pointer" title="Импорт JSON">
+          📥 Импорт JSON
+          <input id="importFile" type="file" accept="application/json" class="hidden" onchange="importJSON(event)" />
+        </label>
+        <button class="btn btn-primary" onclick="exportAll()" title="Экспортировать всё">⬇️ Экспорт</button>
+        <button class="btn" onclick="window.print()" title="Печать / PDF">🖨️ Печать</button>
+      </div>
+    </header>
+
+    <!-- Метаданные и согласие -->
+    <section class="card p-5 md:p-6 mb-5" id="sec-meta">
+      <div class="section-title"><h2 class="text-xl font-semibold">1) Метаданные и согласие</h2><span class="chip">обязательно</span></div>
+      <div class="grid-2 mt-3">
+        <div>
+          <label class="block text-sm text-gray-300">Компания</label>
+          <input id="company" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2" placeholder="ООО Пример"/>
+        </div>
+        <div>
+          <label class="block text-sm text-gray-300">Подразделение / Команда</label>
+          <input id="dept" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2" placeholder="Отдел продаж"/>
+        </div>
+        <div>
+          <label class="block text-sm text-gray-300">Роль / Должность</label>
+          <input id="role" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2" placeholder="Аккаунт-менеджер"/>
+        </div>
+        <div>
+          <label class="block text-sm text-gray-300">Сотрудник (псевдоним допустим)</label>
+          <input id="employee" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2" placeholder="Иван И."/>
+        </div>
+        <div>
+          <label class="block text-sm text-gray-300">Интервьюер</label>
+          <input id="interviewer" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2" placeholder="Олег Т."/>
+        </div>
+        <div>
+          <label class="block text-sm text-gray-300">Дата</label>
+          <input id="date" type="date" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2"/>
+        </div>
+      </div>
+      <div class="mt-3 flex flex-col gap-2">
+        <label class="inline-flex items-center gap-2"><input id="consentRecord" type="checkbox" class="form-checkbox"/> <span>Согласие на запись текста интервью</span></label>
+        <label class="inline-flex items-center gap-2"><input id="consentPII" type="checkbox" class="form-checkbox"/> <span>Согласие на обработку персональных данных</span></label>
+        <label class="inline-flex items-center gap-2"><input id="redact" type="checkbox" class="form-checkbox" checked/> <span>Автоматически редактировать PII при экспорте (e‑mail, телефоны)</span></label>
+      </div>
+    </section>
+
+    <!-- Каналы / Источники -->
+    <section class="card p-5 md:p-6 mb-5" id="sec-channels">
+      <div class="section-title"><h2 class="text-xl font-semibold">2) Каналы и системы</h2><span class="chip">входы</span></div>
+      <p class="text-sm text-gray-300 mt-1">Откуда сотрудник получает информацию? Отметьте и добавьте свои.</p>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3" id="channelsBox"></div>
+      <div class="mt-3 flex gap-2">
+        <input id="customChannel" class="flex-1 bg-gray-900 border border-gray-700 rounded-lg p-2" placeholder="Другое…"/>
+        <button class="btn" onclick="addCustomChannel()">➕ Добавить</button>
+      </div>
+    </section>
+
+    <!-- Входы -->
+    <section class="card p-5 md:p-6 mb-5" id="sec-inputs">
+      <div class="section-title"><h2 class="text-xl font-semibold">3) Входные данные</h2><span class="chip">таблица</span></div>
+      <p class="text-sm text-gray-300 mt-1">Что приходит в работу: формат, частота, система‑источник.</p>
+      <table class="w-full text-sm mt-3" id="tbl-inputs">
+        <thead class="text-left text-gray-300"><tr><th class="py-1">Название</th><th>Источник/Система</th><th>Формат</th><th>Частота</th><th></th></tr></thead>
+        <tbody id="inputsBody"></tbody>
+      </table>
+      <div class="id-tag mt-1">table-id: timebox-inputs</div>
+      <button class="btn mt-3" onclick="addRow('inputs')">➕ Строка</button>
+    </section>
+
+    <!-- Выходы -->
+    <section class="card p-5 md:p-6 mb-5" id="sec-outputs">
+      <div class="section-title"><h2 class="text-xl font-semibold">4) Выходные артефакты</h2><span class="chip">таблица</span></div>
+      <p class="text-sm text-gray-300 mt-1">Что производит сотрудник и кто потребитель.</p>
+      <table class="w-full text-sm mt-3" id="tbl-outputs">
+        <thead class="text-left text-gray-300"><tr><th class="py-1">Артефакт</th><th>Потребитель</th><th>Формат/Шаблон</th><th>Где хранится</th><th></th></tr></thead>
+        <tbody id="outputsBody"></tbody>
+      </table>
+      <div class="id-tag mt-1">table-id: deliverables-outputs</div>
+      <button class="btn mt-3" onclick="addRow('outputs')">➕ Строка</button>
+    </section>
+
+    <!-- Задачи и процессы -->
+    <section class="card p-5 md:p-6 mb-5" id="sec-tasks">
+      <div class="section-title"><h2 class="text-xl font-semibold">5) Задачи и пошаговые процессы</h2><span class="chip">многострочное</span></div>
+      <p class="text-sm text-gray-300 mt-1">Добавляйте ключевые задачи. Для каждой — триггер, шаги, развилки и исключения.</p>
+      <div id="tasksBox" class="flex flex-col gap-3 mt-3"></div>
+      <button class="btn mt-2" onclick="addTask()">➕ Задача</button>
+      <div class="flex items-center gap-2 mt-4">
+        <select id="diagramTaskIdx" class="bg-gray-900 border border-gray-700 rounded-lg p-2">
+          <option value="">(выберите задачу для диаграммы)</option>
+        </select>
+        <button class="btn" onclick="buildDiagram()">📈 Диаграмма процесса (Mermaid)</button>
+      </div>
+      <div id="diagram" class="mt-3 card p-3 overflow-auto"></div>
+      <div class="id-tag">genid: mermaid-main-01</div>
+    </section>
+
+    <!-- Взаимодействия / RACI -->
+    <section class="card p-5 md:p-6 mb-5" id="sec-raci">
+      <div class="section-title"><h2 class="text-xl font-semibold">6) Взаимодействия и RACI</h2><span class="chip">таблица</span></div>
+      <table class="w-full text-sm mt-3" id="tbl-raci">
+        <thead class="text-left text-gray-300"><tr><th class="py-1">Контрагент (люди/системы)</th><th>Тип взаимодействия</th><th>R/A/C/I</th><th>Канал</th><th></th></tr></thead>
+        <tbody id="raciBody"></tbody>
+      </table>
+      <div class="id-tag mt-1">table-id: raci-matrix</div>
+      <button class="btn mt-3" onclick="addRow('raci')">➕ Строка</button>
+    </section>
+
+    <!-- Время и частота -->
+    <section class="card p-5 md:p-6 mb-5" id="sec-time">
+      <div class="section-title"><h2 class="text-xl font-semibold">7) Тайм-аудит</h2><span class="chip">таблица</span></div>
+      <p class="text-sm text-gray-300">Сколько времени уходит на задачи? Заполните для оценки потенциала автоматизации.</p>
+      <table class="w-full text-sm mt-3" id="tbl-time">
+        <thead class="text-left text-gray-300"><tr><th class="py-1">Задача</th><th>Частота</th><th>Длительность (мин)</th><th>Автоматизируемость (0–100)</th><th></th></tr></thead>
+        <tbody id="timeBody"></tbody>
+      </table>
+      <div class="id-tag mt-1">table-id: time-audit</div>
+      <div class="mt-3 text-sm">Всего минут/неделя: <span id="timeTotal" class="font-bold">0</span></div>
+      <button class="btn mt-3" onclick="addRow('time')">➕ Строка</button>
+    </section>
+
+    <!-- Правила, риски, метрики -->
+    <section class="card p-5 md:p-6 mb-5" id="sec-rules">
+      <div class="grid-2 gap-3">
+        <div>
+          <div class="section-title"><h2 class="text-xl font-semibold">8) Бизнес‑правила и политики</h2></div>
+          <textarea id="rules" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2" placeholder="Правила проверки, SLA, шаблоны сообщений, формулы расчётов…"></textarea>
+        </div>
+        <div>
+          <div class="section-title"><h2 class="text-xl font-semibold">9) Риски, ошибки, исключения</h2></div>
+          <textarea id="risks" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2" placeholder="Типовые сбои, ручные обходы, точки эскалации…"></textarea>
+        </div>
+      </div>
+      <div class="grid-2 gap-3 mt-3">
+        <div>
+          <div class="section-title"><h2 class="text-xl font-semibold">10) Метрики / KPI</h2></div>
+          <textarea id="kpis" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2" placeholder="Например: время ответа, конверсия, точность, NPS…"></textarea>
+        </div>
+        <div>
+          <div class="section-title"><h2 class="text-xl font-semibold">11) Доступы и безопасность</h2></div>
+          <textarea id="security" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2" placeholder="Роли, разрешения, хранение данных, ретенция, соответствие (GDPR)…"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- День сотрудника / примеры -->
+    <section class="card p-5 md:p-6 mb-5" id="sec-day">
+      <div class="grid-2 gap-3">
+        <div>
+          <div class="section-title"><h2 class="text-xl font-semibold">12) День из жизни (таймлайн)</h2></div>
+          <textarea id="day" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2" placeholder="Хронология типичного дня: 09:00 проверка CRM → 09:30 ответы клиентам…"></textarea>
+        </div>
+        <div>
+          <div class="section-title"><h2 class="text-xl font-semibold">13) Недавние 5 кейсов</h2></div>
+          <textarea id="cases" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2" placeholder="Краткое описание последних задач, зачем, как решали, результат…"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- Автоматизация и приоритеты -->
+    <section class="card p-5 md:p-6 mb-6" id="sec-auto">
+      <div class="grid-2 gap-3">
+        <div>
+          <div class="section-title"><h2 class="text-xl font-semibold">14) Идеи автоматизации</h2></div>
+          <textarea id="automation" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2" placeholder="RPA, интеграции, AI‑копилоты, шаблоны ответов, автозаполнение…"></textarea>
+        </div>
+        <div>
+          <div class="section-title"><h2 class="text-xl font-semibold">15) Приоритеты и оценка</h2></div>
+          <textarea id="priorities" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2" placeholder="Что делать сначала, ориентировочная сложность, ожидаемый эффект…"></textarea>
+        </div>
+      </div>
+      <div class="mt-4 flex flex-wrap gap-2">
+        <button class="btn" onclick="previewMarkdown()">👁️ Предпросмотр отчёта</button>
+        <button class="btn btn-primary" onclick="exportAll()">⬇️ Экспорт JSON / MD / YAML</button>
+      </div>
+    </section>
+
+    <!-- Предпросмотр отчёта -->
+    <section class="card p-5 md:p-6 mb-10 hidden" id="sec-preview">
+      <div class="section-title"><h2 class="text-xl font-semibold">📄 Предпросмотр Markdown‑отчёта</h2><span class="chip">read‑only</span></div>
+      <pre id="mdPreview" class="mt-3 whitespace-pre-wrap text-sm"></pre>
+    </section>
+
+    <footer class="text-xs text-gray-400 mb-8">
+      Подсказка: используйте <span class="kbd">Tab</span> / <span class="kbd">Shift+Tab</span> для быстрого ввода по полям. Все таблицы имеют подпись вида <span class="chip">table-id</span>, диаграмма — <span class="chip">genid</span>.
+    </footer>
+  </div>
+
+  <script>
+    // --- Инициализация Mermaid ---
+    mermaid.initialize({ startOnLoad: false, theme: 'dark' });
+
+    // --- Начальные каналы ---
+    const defaultChannels = ['Email','CRM','ERP','Slack/Teams','Телефон','Zoom/Meet','SharePoint/Drive','Git/Code','API','Формы сайта','Базы данных','1C','Ticketing/Jira','Calendars','Paper'];
+
+    const SKEY = 'interviewDraft-v1';
+
+    function qs(id){ return document.getElementById(id); }
+
+    function addCustomChannel(){
+      const val = qs('customChannel').value.trim();
+      if(!val) return; addChannelChip(val); qs('customChannel').value='';
+    }
+
+    function addChannelChip(name, checked=false){
+      const box = qs('channelsBox');
+      const id = 'chan-' + name.toLowerCase().replace(/[^a-z0-9]+/gi,'-');
+      const wrap = document.createElement('label');
+      wrap.className = 'inline-flex items-center gap-2 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2';
+      wrap.innerHTML = `<input type="checkbox" class="form-checkbox" id="${id}" ${checked?'checked':''}/> <span>${name}</span>`;
+      wrap.dataset.name = name;
+      box.appendChild(wrap);
+    }
+
+    // Табличные строки
+    function addRow(kind, data={}){
+      if(kind==='inputs'){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><input class="w-full bg-gray-900 border border-gray-700 rounded p-1" value="${data.name||''}"></td>
+                        <td><input class="w-full bg-gray-900 border border-gray-700 rounded p-1" value="${data.source||''}"></td>
+                        <td><input class="w-full bg-gray-900 border border-gray-700 rounded p-1" value="${data.format||''}"></td>
+                        <td><input class="w-full bg-gray-900 border border-gray-700 rounded p-1" value="${data.freq||''}"></td>
+                        <td><button class="btn" onclick="this.closest('tr').remove()">✖</button></td>`;
+        qs('inputsBody').appendChild(tr);
+      }
+      if(kind==='outputs'){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><input class="w-full bg-gray-900 border border-gray-700 rounded p-1" value="${data.art||''}"></td>
+                        <td><input class="w-full bg-gray-900 border border-gray-700 rounded p-1" value="${data.consumer||''}"></td>
+                        <td><input class="w-full bg-gray-900 border border-gray-700 rounded p-1" value="${data.format||''}"></td>
+                        <td><input class="w-full bg-gray-900 border border-gray-700 rounded p-1" value="${data.store||''}"></td>
+                        <td><button class="btn" onclick="this.closest('tr').remove()">✖</button></td>`;
+        qs('outputsBody').appendChild(tr);
+      }
+      if(kind==='raci'){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><input class="w-full bg-gray-900 border border-gray-700 rounded p-1" value="${data.party||''}"></td>
+                        <td><input class="w-full bg-gray-900 border border-gray-700 rounded p-1" value="${data.type||''}"></td>
+                        <td><select class="w-full bg-gray-900 border border-gray-700 rounded p-1">
+                              <option ${data.raci==='R'?'selected':''}>R</option>
+                              <option ${data.raci==='A'?'selected':''}>A</option>
+                              <option ${data.raci==='C'?'selected':''}>C</option>
+                              <option ${data.raci==='I'?'selected':''}>I</option>
+                            </select></td>
+                        <td><input class="w-full bg-gray-900 border border-gray-700 rounded p-1" value="${data.channel||''}"></td>
+                        <td><button class="btn" onclick="this.closest('tr').remove()">✖</button></td>`;
+        qs('raciBody').appendChild(tr);
+      }
+      if(kind==='time'){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><input class="w-full bg-gray-900 border border-gray-700 rounded p-1 taskname" value="${data.task||''}"></td>
+                        <td><input class="w-full bg-gray-900 border border-gray-700 rounded p-1 freq" value="${data.freq||''}" placeholder="ежедневно/еженедельно…"></td>
+                        <td><input class="w-full bg-gray-900 border border-gray-700 rounded p-1 mins" type="number" value="${data.mins||0}" min="0"></td>
+                        <td><input class="w-full bg-gray-900 border border-gray-700 rounded p-1 score" type="number" value="${data.score||0}" min="0" max="100"></td>
+                        <td><button class="btn" onclick="this.closest('tr').remove(); recalcTime()">✖</button></td>`;
+        qs('timeBody').appendChild(tr);
+        tr.querySelector('.mins').addEventListener('input', recalcTime);
+      }
+    }
+
+    // Задачи
+    let taskCount = 0;
+    function addTask(data={}){
+      const idx = taskCount++;
+      const wrap = document.createElement('div');
+      wrap.className = 'card p-4';
+      wrap.innerHTML = `
+        <div class="flex justify-between items-center">
+          <div class="font-semibold">Задача #${idx+1}</div>
+          <div class="flex gap-2">
+            <button class="btn" onclick="this.closest('.card').remove(); rebuildDiagramSelector()">✖ Удалить</button>
+          </div>
+        </div>
+        <div class="grid-2 gap-3 mt-2">
+          <div>
+            <label class="text-sm text-gray-300">Название</label>
+            <input class="w-full bg-gray-900 border border-gray-700 rounded p-2 task-title" value="${data.title||''}">
+          </div>
+          <div>
+            <label class="text-sm text-gray-300">Триггер</label>
+            <input class="w-full bg-gray-900 border border-gray-700 rounded p-2 task-trigger" value="${data.trigger||''}" placeholder="Поступил запрос клиента / статус сделки изменился…">
+          </div>
+        </div>
+        <div class="grid-2 gap-3 mt-2">
+          <div>
+            <label class="text-sm text-gray-300">Шаги (по одному на строку)</label>
+            <textarea class="w-full bg-gray-900 border border-gray-700 rounded p-2 task-steps" placeholder="1. Открыть CRM\n2. Найти клиента…">${data.steps||''}</textarea>
+          </div>
+          <div>
+            <label class="text-sm text-gray-300">Развилки / Решения</label>
+            <textarea class="w-full bg-gray-900 border border-gray-700 rounded p-2 task-decisions" placeholder="Если A — делаем X, иначе Y">${data.decisions||''}</textarea>
+          </div>
+        </div>
+        <div class="grid-2 gap-3 mt-2">
+          <div>
+            <label class="text-sm text-gray-300">Исключения / Ошибки</label>
+            <textarea class="w-full bg-gray-900 border border-gray-700 rounded p-2 task-exc" placeholder="Что делаем при сбоях?">${data.exc||''}</textarea>
+          </div>
+          <div>
+            <label class="text-sm text-gray-300">SLA / Сроки</label>
+            <input class="w-full bg-gray-900 border border-gray-700 rounded p-2 task-sla" value="${data.sla||''}">
+          </div>
+        </div>
+      `;
+      qs('tasksBox').appendChild(wrap);
+      rebuildDiagramSelector();
+    }
+
+    function rebuildDiagramSelector(){
+      const sel = qs('diagramTaskIdx');
+      sel.innerHTML = '<option value="">(выберите задачу для диаграммы)</option>';
+      const cards = [...qs('tasksBox').querySelectorAll('.card')];
+      cards.forEach((c,i)=>{
+        const title = c.querySelector('.task-title')?.value||`Задача ${i+1}`;
+        const opt = document.createElement('option');
+        opt.value = i; opt.textContent = `${i+1}) ${title}`; sel.appendChild(opt);
+      });
+    }
+
+    function buildDiagram(){
+      const idx = parseInt(qs('diagramTaskIdx').value);
+      if(isNaN(idx)) { qs('diagram').innerHTML = '<div class="text-sm text-red-300">Выберите задачу.</div>'; return; }
+      const card = qs('tasksBox').querySelectorAll('.card')[idx];
+      const title = card.querySelector('.task-title').value || `Задача ${idx+1}`;
+      const steps = (card.querySelector('.task-steps').value||'').split(/\n+/).map(s=>s.replace(/^\d+\.\s*/,'').trim()).filter(Boolean);
+      const decisions = (card.querySelector('.task-decisions').value||'').split(/\n+/).filter(Boolean);
+
+      let flow = `flowchart TD\nA([${escapeMermaid(title)}])`;
+      let prev = 'A';
+      steps.forEach((s, i)=>{
+        const id = 'S'+i; flow += `\n${id}([${escapeMermaid(s)}])`; flow += `\n${prev}-->${id}`; prev=id;
+      });
+      decisions.forEach((d, i)=>{
+        const id = 'D'+i; flow += `\n${id}{${escapeMermaid(d)}}`; flow += `\n${prev}-->${id}`; prev=id;
+      });
+      flow += '\n';
+
+      qs('diagram').innerHTML = `<div class="mermaid">${flow}</div>`;
+      mermaid.run({ nodes: [qs('diagram')] });
+    }
+
+    function escapeMermaid(s){ return s.replace(/[\[\]{}()<>]/g,'').replace(/"/g,'\"'); }
+
+    function collectTable(tbody){
+      const rows = [...tbody.querySelectorAll('tr')];
+      return rows.map(tr=>{
+        const inputs = [...tr.querySelectorAll('input,select')];
+        return inputs.map(i=>i.value);
+      });
+    }
+
+    function recalcTime(){
+      const mins = [...qs('timeBody').querySelectorAll('.mins')].map(i=>parseInt(i.value||0)||0);
+      const total = mins.reduce((a,b)=>a+b,0);
+      qs('timeTotal').textContent = total;
+    }
+
+    function redactPII(text){
+      if(!qs('redact').checked) return text;
+      // e‑mail
+      text = text.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi,'[redacted-email]');
+      // телефоны (простая эвристика)
+      text = text.replace(/\+?\d[\d\s().-]{6,}\d/g,'[redacted-phone]');
+      return text;
+    }
+
+    function gather(){
+      const channels = [...qs('channelsBox').querySelectorAll('label')]
+        .filter(l=>l.querySelector('input').checked).map(l=>l.dataset.name);
+
+      const inputs = collectTable(qs('inputsBody')).map(r=>({name:r[0], source:r[1], format:r[2], freq:r[3]}));
+      const outputs = collectTable(qs('outputsBody')).map(r=>({art:r[0], consumer:r[1], format:r[2], store:r[3]}));
+      const raci = collectTable(qs('raciBody')).map(r=>({party:r[0], type:r[1], raci:r[2], channel:r[3]}));
+      const time = collectTable(qs('timeBody')).map(r=>({task:r[0], freq:r[1], mins:Number(r[2]||0), score:Number(r[3]||0)}));
+
+      const tasks = [...qs('tasksBox').querySelectorAll('.card')].map(c=>({
+        title: c.querySelector('.task-title').value,
+        trigger: c.querySelector('.task-trigger').value,
+        steps: (c.querySelector('.task-steps').value||'').split(/\n+/).filter(Boolean),
+        decisions: (c.querySelector('.task-decisions').value||'').split(/\n+/).filter(Boolean),
+        exceptions: c.querySelector('.task-exc').value,
+        sla: c.querySelector('.task-sla').value,
+      }));
+
+      const data = {
+        meta: {
+          company: qs('company').value,
+          dept: qs('dept').value,
+          role: qs('role').value,
+          employee: qs('employee').value,
+          interviewer: qs('interviewer').value,
+          date: qs('date').value,
+          consentRecord: qs('consentRecord').checked,
+          consentPII: qs('consentPII').checked,
+          redact: qs('redact').checked,
+        },
+        channels, inputs, outputs, tasks, raci, time,
+        rules: qs('rules').value,
+        risks: qs('risks').value,
+        kpis: qs('kpis').value,
+        security: qs('security').value,
+        day: qs('day').value,
+        cases: qs('cases').value,
+        automation: qs('automation').value,
+        priorities: qs('priorities').value,
+      };
+
+      // Редакция PII в текстовых полях
+      ['rules','risks','kpis','security','day','cases','automation','priorities'].forEach(k=>{ data[k] = redactPII(data[k]); });
+      data.tasks.forEach(t=>{ t.exceptions = redactPII(t.exceptions||''); t.steps = t.steps.map(s=>redactPII(s)); t.decisions = t.decisions.map(d=>redactPII(d)); });
+      data.inputs = data.inputs.map(x=>({ ...x, name:redactPII(x.name||''), source:redactPII(x.source||'') }));
+      data.outputs = data.outputs.map(x=>({ ...x, art:redactPII(x.art||''), consumer:redactPII(x.consumer||'') }));
+      data.raci = data.raci.map(x=>({ ...x, party:redactPII(x.party||'') }));
+
+      return data;
+    }
+
+    function computeReadiness(time){
+      if(!time.length) return 0;
+      const w = time.map(r=> (r.mins * (r.score||0)) );
+      const totalMins = time.map(r=>r.mins).reduce((a,b)=>a+b,0) || 1;
+      return Math.round( w.reduce((a,b)=>a+b,0) / totalMins );
+    }
+
+    function toMarkdown(data){
+      const ready = computeReadiness(data.time);
+      const hdr = `# Отчёт по роли: ${data.meta.role||''} — ${data.meta.company||''}\n\n` +
+                  `**Подразделение:** ${data.meta.dept||''}  \n` +
+                  `**Дата интервью:** ${data.meta.date||''}  \n` +
+                  `**Интервьюер:** ${data.meta.interviewer||''}  \n` +
+                  `**Согласие на запись:** ${data.meta.consentRecord?'да':'нет'}  \n` +
+                  `**Согласие на ПД:** ${data.meta.consentPII?'да':'нет'}  \n` +
+                  `**Оценка готовности к автоматизации:** ${ready}/100`;
+
+      const tbl = (rows, heads)=>{
+        if(!rows.length) return '';
+        const head = `| ${heads.join(' | ')} |\n| ${heads.map(()=>'-').join(' | ')} |`;
+        const body = rows.map(r=>`| ${heads.map((_,i)=> (r[i]??'').toString().replace(/\n/g,' ')).join(' | ')} |`).join('\n');
+        return head + '\n' + body;
+      };
+
+      const md = [
+        hdr,
+        '\n\n## Каналы и системы\n' + (data.channels||[]).map(c=>'- '+c).join('\n'),
+        '\n\n## Входные данные\n' + tbl( data.inputs.map(x=>[x.name,x.source,x.format,x.freq]), ['Название','Источник','Формат','Частота'] ),
+        '\n\n## Выходные артефакты\n' + tbl( data.outputs.map(x=>[x.art,x.consumer,x.format,x.store]), ['Артефакт','Потребитель','Формат','Хранилище'] ),
+        '\n\n## Задачи и процессы\n' + (data.tasks||[]).map((t,i)=>`### ${i+1}. ${t.title}\n- Триггер: ${t.trigger}\n- Шаги:\n${t.steps.map(s=>`  - ${s}`).join('\n')}\n- Развилки:\n${t.decisions.map(s=>`  - ${s}`).join('\n')}\n- Исключения: ${t.exceptions||'-'}\n- SLA: ${t.sla||'-'}`).join('\n\n'),
+        '\n\n## Взаимодействия и RACI\n' + tbl( data.raci.map(x=>[x.party,x.type,x.raci,x.channel]), ['Контрагент','Тип','RACI','Канал'] ),
+        '\n\n## Тайм-аудит\n' + tbl( data.time.map(x=>[x.task,x.freq,x.mins,x.score]), ['Задача','Частота','Минут','Автоматизируемость'] ),
+        '\n\n## Бизнес‑правила\n' + (data.rules||'-'),
+        '\n\n## Риски и исключения\n' + (data.risks||'-'),
+        '\n\n## Метрики / KPI\n' + (data.kpis||'-'),
+        '\n\n## Доступы и безопасность\n' + (data.security||'-'),
+        '\n\n## День из жизни\n' + (data.day||'-'),
+        '\n\n## Недавние кейсы\n' + (data.cases||'-'),
+        '\n\n## Идеи автоматизации\n' + (data.automation||'-'),
+        '\n\n## Приоритеты\n' + (data.priorities||'-'),
+      ].join('\n');
+      return md;
+    }
+
+    function toYAML(data){
+      // Простейшая YAML-схема для agentic workflow
+      const esc = s=> (s||'').toString().replace(/\n/g,'\\n').replace(/"/g,'\\"');
+      const tasks = (data.tasks||[]).map(t=>`  - name: "${esc(t.title)}"\n    trigger: "${esc(t.trigger)}"\n    steps: [${t.steps.map(s=>'"'+esc(s)+'"').join(', ')}]\n    decisions: [${t.decisions.map(s=>'"'+esc(s)+'"').join(', ')}]\n    exceptions: "${esc(t.exceptions)}"\n    sla: "${esc(t.sla)}"`).join('\n');
+      const inputs = (data.inputs||[]).map(x=>`  - name: "${esc(x.name)}"\n    source: "${esc(x.source)}"\n    format: "${esc(x.format)}"\n    frequency: "${esc(x.freq)}"`).join('\n');
+      const outputs = (data.outputs||[]).map(x=>`  - name: "${esc(x.art)}"\n    consumer: "${esc(x.consumer)}"\n    format: "${esc(x.format)}"\n    storage: "${esc(x.store)}"`).join('\n');
+      const raci = (data.raci||[]).map(x=>`  - party: "${esc(x.party)}"\n    interaction: "${esc(x.type)}"\n    role: "${esc(x.raci)}"\n    channel: "${esc(x.channel)}"`).join('\n');
+      const time = (data.time||[]).map(x=>`  - task: "${esc(x.task)}"\n    frequency: "${esc(x.freq)}"\n    minutes: ${Number(x.mins)||0}\n    automatable: ${Number(x.score)||0}`).join('\n');
+      const yaml = `spec: agentic-workflow-v0.1\nmeta:\n  company: "${esc(data.meta.company)}"\n  dept: "${esc(data.meta.dept)}"\n  role: "${esc(data.meta.role)}"\n  interview_date: "${esc(data.meta.date)}"\n  interviewer: "${esc(data.meta.interviewer)}"\nchannels:\n${inputs?('inputs:\n'+inputs):'inputs: []'}\n${outputs?('\noutputs:\n'+outputs):'\noutputs: []'}\nprocesses:\n${tasks||'  []'}\nraci:\n${raci||'  []'}\ntime_audit:\n${time||'  []'}\nrules: "${esc(data.rules)}"\nrisks: "${esc(data.risks)}"\nkpis: "${esc(data.kpis)}"\nsecurity: "${esc(data.security)}"\nday_in_life: "${esc(data.day)}"\nrecent_cases: "${esc(data.cases)}"\nautomation_ideas: "${esc(data.automation)}"\npriorities: "${esc(data.priorities)}"\n`;
+      return yaml;
+    }
+
+    function exportAll(){
+      const data = gather();
+      const md = toMarkdown(data);
+      const yml = toYAML(data);
+      download('role-interview.json', JSON.stringify(data, null, 2));
+      download('role-report.md', md);
+      download('agentic-workflow.yml', yml);
+    }
+
+    function previewMarkdown(){
+      const data = gather();
+      qs('mdPreview').textContent = toMarkdown(data);
+      qs('sec-preview').classList.remove('hidden');
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }
+
+    function download(filename, text){
+      const blob = new Blob([text], {type: 'text/plain;charset=utf-8'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; a.click();
+      setTimeout(()=> URL.revokeObjectURL(url), 1000);
+    }
+
+    function saveDraft(){
+      const data = gather();
+      localStorage.setItem(SKEY, JSON.stringify(data));
+      toast('Черновик сохранён.');
+    }
+
+    function loadDraft(){
+      const raw = localStorage.getItem(SKEY); if(!raw){ toast('Черновика нет.'); return; }
+      applyData(JSON.parse(raw));
+      toast('Черновик загружен.');
+    }
+
+    function importJSON(ev){
+      const f = ev.target.files[0]; if(!f) return;
+      const rdr = new FileReader();
+      rdr.onload = ()=>{ try{ const obj = JSON.parse(rdr.result); applyData(obj); toast('Импортировано.'); }catch(e){ toast('Ошибка JSON.'); } };
+      rdr.readAsText(f);
+    }
+
+    function applyData(data){
+      // мета
+      ['company','dept','role','employee','interviewer','date'].forEach(id=>{ if(data.meta&&data.meta[id]!=null) qs(id).value = data.meta[id]; });
+      if(data.meta){ qs('consentRecord').checked = !!data.meta.consentRecord; qs('consentPII').checked = !!data.meta.consentPII; qs('redact').checked = !!data.meta.redact; }
+
+      // каналы
+      qs('channelsBox').innerHTML='';
+      (defaultChannels).forEach(c=> addChannelChip(c, data.channels?.includes(c)));
+      (data.channels||[]).forEach(c=>{ if(!defaultChannels.includes(c)) addChannelChip(c, true); });
+
+      // tables
+      qs('inputsBody').innerHTML=''; (data.inputs||[]).forEach(r=>addRow('inputs', r));
+      qs('outputsBody').innerHTML=''; (data.outputs||[]).forEach(r=>addRow('outputs', r));
+      qs('raciBody').innerHTML=''; (data.raci||[]).forEach(r=>addRow('raci', r));
+      qs('timeBody').innerHTML=''; (data.time||[]).forEach(r=>addRow('time', r)); recalcTime();
+
+      // tasks
+      qs('tasksBox').innerHTML=''; taskCount=0; (data.tasks||[]).forEach(t=>addTask(t));
+
+      // text areas
+      ['rules','risks','kpis','security','day','cases','automation','priorities'].forEach(id=>{ if(data[id]!=null) qs(id).value = data[id]; });
+
+      rebuildDiagramSelector();
+    }
+
+    function toast(msg){
+      const d = document.createElement('div');
+      d.textContent = msg; d.className = 'fixed bottom-4 right-4 bg-black bg-opacity-80 text-white px-3 py-2 rounded-lg';
+      document.body.appendChild(d); setTimeout(()=>d.remove(), 2500);
+    }
+
+    // — Стартовая инициализация —
+    (function init(){
+      defaultChannels.forEach(c=> addChannelChip(c));
+      addRow('inputs'); addRow('outputs'); addRow('raci'); addRow('time');
+      addTask({ title:'Ответ на входящее письмо клиента', trigger:'Получен e‑mail с вопросом', steps:'1. Прочитать письмо\n2. Проверить клиента в CRM\n3. Подготовить ответ по шаблону', decisions:'Есть номер договора?\nЕсть просроченный счет?' });
+      recalcTime(); rebuildDiagramSelector();
+    })();
+  </script>
+</body>
+</html>
